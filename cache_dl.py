@@ -80,7 +80,7 @@ class CachedDownloader:
                     wf.write(resp.read(self._packet_size_))
                     pct = int(100 * dlbytes / length)
                     self.each_packet(dlbytes, length, pct)
-                self.after_dl(url, dst, length)
+            self.after_dl(url, dst, length)
 
     def before_dl(self, url, dst):
         pass
@@ -104,7 +104,8 @@ class CachedDownloader:
         ), end='')
 
     def _default_bar_length_error_(self, resp):
-        print("  Can't get a length, no progress bar")
+        print("  Can't get a length, no progress bar.")
+        print('  Downloading...', end='')
 
     def _default_bar_after_dl_(self, url, dst, total):
         print()
