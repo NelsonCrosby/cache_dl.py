@@ -40,6 +40,8 @@ You can also subclass `CachedDownloader` and override some methods to get
 - `before_dl(self, url, dst)` is called before the download starts.
 - `each_packet(self, bytec, out_of, percent)` is called after each packet is
     downloaded.
+- `length_error(self, resp)` is called when `CachedDownloader` can't find a
+    response length.
 - `after_dl(self, url, dst, total_bytes)` is called after the download ends.
 
 The above methods have an optional default - a primitive progress bar displayed

@@ -35,6 +35,7 @@ class CachedDownloader:
         if use_default_bar:
             self.before_dl = self._default_bar_before_dl_
             self.each_packet = self._default_bar_each_packet_
+            self.length_error = self._default_bar_length_error_
             self.after_dl = self._default_bar_after_dl_
 
         os.makedirs(self.cachedir(), exist_ok=True)
@@ -69,7 +70,7 @@ class CachedDownloader:
             resp = urlopen(url)
             length = resp.getheader('Content-Length')
             if length is None:
-                print("  Can't get a length, no progress bar")
+                self.length_error(resp)
                 wf.write(resp.read())
             else:
                 dlbytes = 0
@@ -87,6 +88,9 @@ class CachedDownloader:
     def each_packet(self, bytec, out_of, pct):
         pass
 
+    def length_error(self, resp):
+        pass
+
     def after_dl(self, url, dst, total):
         pass
 
@@ -98,6 +102,9 @@ class CachedDownloader:
         print('\r[{}{}] ({}%)'.format(
             '=' * barcount, ' ' * (50 - barcount), pct
         ), end='')
+
+    def _default_bar_length_error_(self, resp):
+        print("  Can't get a length, no progress bar")
 
     def _default_bar_after_dl_(self, url, dst, total):
         print()
