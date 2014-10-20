@@ -21,8 +21,39 @@ class CachedDownloader:
         '_other_': os.path.expanduser(os.path.join('~', '.cdlcache'))
     }
 
-    @staticmethod
-    def _curl_(url, dst, *, echo=False):
+    def __init__(self, cachedir=None, packet_size=1204):
+        """Ensures that cachedir() and cachedir('cache.json') both exist,
+        then loads cache info from cachedir('cache.json')"""
+        sysname = os.uname().sysname
+        sysname = sysname if sysname in self.SYSTEM_CACHEDIRS else '_other_'
+        self._cachedir_ = (cachedir if cachedir is not None
+                           else self.SYSTEM_CACHEDIRS[sysname])
+
+        self._packet_size_ = packet_size
+
+        os.makedirs(self.cachedir(), exist_ok=True)
+        if not os.path.exists(self.cachedir('cache.json')):
+            with open(self.cachedir('cache.json'), 'w') as wf:
+                wf.write('{}')
+        self._load_cache_()
+
+    def _load_cache_(self):
+        """Loads cache info from cachedir('cache.json')"""
+        with open(self.cachedir('cache.json')) as rf:
+            self._cache_ = json.loads(rf.read())
+
+    def _save_cache_(self):
+        """Saves cache info to cachedir('cache.json')"""
+        with open(self.cachedir('cache.json'), 'w') as wf:
+            wf.write(json.dumps(self._cache_))
+
+    def cachedir(self, *args):
+        """Get a directory relative to ~/.cdlcache
+        :param args: Passed directly to os.path.join
+        """
+        return os.path.join(self._cachedir_, *args)
+
+    def _curl_(self, url, dst, *, echo=False):
         """Download the content of url and save it to dst
         :param url: Where to download from
         :param dst: Where to download to
@@ -40,8 +71,8 @@ class CachedDownloader:
                 dlbytes = 0
                 length = int(length)
                 while dlbytes < length:
-                    dlbytes += 1
-                    wf.write(resp.read(1))
+                    dlbytes += self._packet_size_
+                    wf.write(resp.read(self._packet_size_))
                     pct = int(100 * dlbytes / length)
                     barcount = int(pct / 2)
                     if echo:
@@ -50,36 +81,6 @@ class CachedDownloader:
                         ), end='')
                 if echo:
                     print()
-
-    def __init__(self, cachedir=None):
-        """Ensures that cachedir() and cachedir('cache.json') both exist,
-        then loads cache info from cachedir('cache.json')"""
-        sysname = os.uname().sysname
-        sysname = sysname if sysname in self.SYSTEM_CACHEDIRS else '_other_'
-        self._cachedir_ = (cachedir if cachedir is not None
-                           else self.SYSTEM_CACHEDIRS[sysname])
-
-        os.makedirs(self.cachedir(), exist_ok=True)
-        if not os.path.exists(self.cachedir('cache.json')):
-            with open(self.cachedir('cache.json'), 'w') as wf:
-                wf.write('{}')
-        self._load_cache_()
-
-    def cachedir(self, *args):
-        """Get a directory relative to ~/.cdlcache
-        :param args: Passed directly to os.path.join
-        """
-        return os.path.join(self._cachedir_, *args)
-
-    def _load_cache_(self):
-        """Loads cache info from cachedir('cache.json')"""
-        with open(self.cachedir('cache.json')) as rf:
-            self._cache_ = json.loads(rf.read())
-
-    def _save_cache_(self):
-        """Saves cache info to cachedir('cache.json')"""
-        with open(self.cachedir('cache.json'), 'w') as wf:
-            wf.write(json.dumps(self._cache_))
 
     def _dl_from_cache_(self, url):
         """Get a file from cachedir(), based on url and cache info"""
