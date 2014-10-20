@@ -13,3 +13,20 @@ This script is not actually supposed to be imported. It will work perfectly
 
 If you do copy this script, the docstring for the class `CachedDownloader` MUST
  remain in tact.
+
+
+## Using ##
+
+Simple. Download cache_dl.py. Either the script contents to the top of your
+ working script, or place it somewhere it can be imported.
+
+Create an instance of `CachedDownloader`. The main thing you will have to worry
+ about is `CachedDownloader#get(url, *, progress, check_cache, check_head)`.
+ That will take care of getting everything for you, just give it your URL and
+ get back a path to a file (this file is guaranteed to exist).
+
+You should probably note that `CachedDownloader` doesn't do any validation of
+ the URL. It _expects_ that it will be working with an HTTP URL, and doesn't
+ do any checking before passing it to `urlopen` (which is designed to be able
+ to handle a few other protocols as well, such as FTP). It's up to you to take
+ care with that.
