@@ -25,6 +25,11 @@ Create an instance of `CachedDownloader`. The main thing you will have to worry
  That will take care of getting everything for you, just give it your URL and
  get back a path to a file (this file is guaranteed to exist).
 
+`CachedDownloader` also takes one argument, cachedir. Usually, this defaults to
+ the standard hidden location on your system (e.g. `~/.cachedir` on Linux).
+ It is preferred to use the default cachedir, as it might mean less downloads
+ where your resources are shared by another script.
+
 You should probably note that `CachedDownloader` doesn't do any validation of
  the URL. It _expects_ that it will be working with an HTTP URL, and doesn't
  do any checking before passing it to `urlopen` (which is designed to be able

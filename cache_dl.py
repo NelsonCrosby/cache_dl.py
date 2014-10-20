@@ -11,12 +11,15 @@ class CachedDownloader:
     Copyright (c) 2014 Nelson Crosby
     Licensed under the MIT license.
     See https://github.com/NelsonCrosby/cache_dl.py for more info."""
-    @staticmethod
-    def cachedir(*args):
-        """Get a directory relative to ~/.cdlcache
-        :param args: Passed directly to os.path.join
-        """
-        return os.path.expanduser(os.path.join('~', '.cdlcache', *args))
+    SYSTEM_CACHEDIRS = {
+        'Windows': os.path.expanduser(
+            os.path.join('~', 'AppData', 'Roaming', 'cdlcache')
+        ),
+        'Mac': os.path.expanduser(
+            os.path.join('~', 'Application Support', 'cdlcache')
+        ),
+        '_other_': os.path.expanduser(os.path.join('~', '.cdlcache'))
+    }
 
     @staticmethod
     def _curl_(url, dst, *, echo=False):
@@ -48,14 +51,25 @@ class CachedDownloader:
                 if echo:
                     print()
 
-    def __init__(self):
+    def __init__(self, cachedir=None):
         """Ensures that cachedir() and cachedir('cache.json') both exist,
         then loads cache info from cachedir('cache.json')"""
+        sysname = os.uname().sysname
+        sysname = sysname if sysname in self.SYSTEM_CACHEDIRS else '_other_'
+        self._cachedir_ = (cachedir if cachedir is not None
+                           else self.SYSTEM_CACHEDIRS[sysname])
+
         os.makedirs(self.cachedir(), exist_ok=True)
         if not os.path.exists(self.cachedir('cache.json')):
             with open(self.cachedir('cache.json'), 'w') as wf:
                 wf.write('{}')
         self._load_cache_()
+
+    def cachedir(self, *args):
+        """Get a directory relative to ~/.cdlcache
+        :param args: Passed directly to os.path.join
+        """
+        return os.path.join(self._cachedir_, *args)
 
     def _load_cache_(self):
         """Loads cache info from cachedir('cache.json')"""
