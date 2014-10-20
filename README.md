@@ -25,10 +25,26 @@ Create an instance of `CachedDownloader`. The main thing you will have to worry
  That will take care of getting everything for you, just give it your URL and
  get back a path to a file (this file is guaranteed to exist).
 
-`CachedDownloader` also takes one argument, cachedir. Usually, this defaults to
+`CachedDownloader` also takes three arguments. The first, `cachedir`, tells
+ `CachedDownloader` where to put the downlead cache. Usually, this defaults to
  the standard hidden location on your system (e.g. `~/.cachedir` on Linux).
  It is preferred to use the default cachedir, as it might mean less downloads
  where your resources are shared by another script.
+
+The second, `packet_size`, tells the number of bytes to download at a time.
+ Defaults to `1024`.
+
+You can also subclass `CachedDownloader` and override some methods to get
+ different functionality during download:
+
+- `before_dl(self, url, dst)` is called before the download starts.
+- `each_packet(self, bytec, out_of, percent)` is called after each packet is
+    downloaded.
+- `after_dl(self, url, dst, total_bytes)` is called after the download ends.
+
+The above methods have an optional default - a primitive progress bar displayed
+ in the terminal. You can activate these by setting the constructor's keyword
+ argument `use_default_bar` to `True`.
 
 You should probably note that `CachedDownloader` doesn't do any validation of
  the URL. It _expects_ that it will be working with an HTTP URL, and doesn't

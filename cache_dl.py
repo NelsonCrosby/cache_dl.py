@@ -21,7 +21,8 @@ class CachedDownloader:
         '_other_': os.path.expanduser(os.path.join('~', '.cdlcache'))
     }
 
-    def __init__(self, cachedir=None, packet_size=1204):
+    def __init__(self, cachedir=None, packet_size=1204, *,
+                 use_default_bar=False):
         """Ensures that cachedir() and cachedir('cache.json') both exist,
         then loads cache info from cachedir('cache.json')"""
         sysname = os.uname().sysname
@@ -30,6 +31,11 @@ class CachedDownloader:
                            else self.SYSTEM_CACHEDIRS[sysname])
 
         self._packet_size_ = packet_size
+
+        if use_default_bar:
+            self.before_dl = self._default_bar_before_dl_
+            self.each_packet = self._default_bar_each_packet_
+            self.after_dl = self._default_bar_after_dl_
 
         os.makedirs(self.cachedir(), exist_ok=True)
         if not os.path.exists(self.cachedir('cache.json')):
@@ -53,15 +59,13 @@ class CachedDownloader:
         """
         return os.path.join(self._cachedir_, *args)
 
-    def _curl_(self, url, dst, *, echo=False):
+    def _curl_(self, url, dst):
         """Download the content of url and save it to dst
         :param url: Where to download from
         :param dst: Where to download to
-        :param echo: If True, use a progress bar. Defaults to False.
         """
         with open(dst, 'wb') as wf:
-            if echo:
-                print("'{}' -> '{}'".format(url, dst))
+            self.before_dl(url, dst)
             resp = urlopen(url)
             length = resp.getheader('Content-Length')
             if length is None:
@@ -74,19 +78,35 @@ class CachedDownloader:
                     dlbytes += self._packet_size_
                     wf.write(resp.read(self._packet_size_))
                     pct = int(100 * dlbytes / length)
-                    barcount = int(pct / 2)
-                    if echo:
-                        print('\r[{}{}] ({}%)'.format(
-                            '=' * barcount, ' ' * (50 - barcount), pct
-                        ), end='')
-                if echo:
-                    print()
+                    self.each_packet(dlbytes, length, pct)
+                self.after_dl(url, dst, length)
+
+    def before_dl(self, url, dst):
+        pass
+
+    def each_packet(self, bytec, out_of, pct):
+        pass
+
+    def after_dl(self, url, dst, total):
+        pass
+
+    def _default_bar_before_dl_(self, url, dst):
+        print("'{}' -> '{}'".format(url, dst))
+
+    def _default_bar_each_packet_(self, bytec, out_of, pct):
+        barcount = int(pct/2)
+        print('\r[{}{}] ({}%)'.format(
+            '=' * barcount, ' ' * (50 - barcount), pct
+        ), end='')
+
+    def _default_bar_after_dl_(self, url, dst, total):
+        print()
 
     def _dl_from_cache_(self, url):
         """Get a file from cachedir(), based on url and cache info"""
         return self.cachedir(self._cache_[url]['id'])
 
-    def _dl_to_cache(self, url, *, progress=True):
+    def _dl_to_cache(self, url):
         """Downloads a file and stores it in cachedir().
         Doesn't do any existence or redundancy checking."""
         fname = uuid4().urn[9:]
@@ -100,25 +120,25 @@ class CachedDownloader:
             cached['last-modified'] = lastmod
         elif etag is not None:
             cached['etag'] = etag
-        self._curl_(url, self.cachedir(fname), echo=progress)
+        self._curl_(url, self.cachedir(fname))
         self._cache_[url] = cached
         self._save_cache_()
         return self._dl_from_cache_(url)
 
-    def _dl_check_cache(self, url, *, progress=True):
+    def _dl_check_cache(self, url):
         """Checks whether or not the url is in the cache.
         Doesn't do any server checking."""
         if url in self._cache_:
             return self._dl_from_cache_(url)
         else:
-            return self._dl_to_cache(url, progress=progress)
+            return self._dl_to_cache(url)
 
-    def _dl_check_head_(self, url, *, progress=True):
+    def _dl_check_head_(self, url):
         """Checks whether or not the resource has been updated on the server."""
         cached = self._cache_[url] if url in self._cache_ else None
         req = Request(url)
         if cached is None:
-            return self._dl_to_cache(url, progress=progress)
+            return self._dl_to_cache(url)
         elif 'etag' in cached:
             req.add_header('If-None-Match', cached['etag'])
         elif 'last-modified' in cached:
@@ -131,9 +151,9 @@ class CachedDownloader:
             if e.code == 304:
                 return self._dl_from_cache_(url)
         else:
-            return self._dl_to_cache(url, progress=progress)
+            return self._dl_to_cache(url)
 
-    def get(self, url, *, progress=True, check_head=True, check_cache=True):
+    def get(self, url, *, check_head=True, check_cache=True):
         """The method that drives it all.
         If progress is True, displays a progress bar if necessary.
         If check_cache is False, forces downloading of the resource.
@@ -146,8 +166,8 @@ class CachedDownloader:
         """
         if check_cache:
             if check_head:
-                return self._dl_check_head_(url, progress=progress)
+                return self._dl_check_head_(url)
             else:
-                return self._dl_check_cache(url, progress=progress)
+                return self._dl_check_cache(url)
         else:
-            return self._dl_to_cache(url, progress=progress)
+            return self._dl_to_cache(url)
